@@ -34,7 +34,6 @@ document.addEventListener("mousemove", function(event) {
     cursor.style.top = cursorY + "px";
 });
 
-/// pointer end
 
 function drawLetter() {
     paper.clear();
@@ -61,11 +60,11 @@ function drawLetter() {
 }
 
 function startDrawing(event) {
+    event.preventDefault(); // Prevent scrolling issue on mobile
     isDrawing = true;
-    let x = event.offsetX || event.touches[0].clientX;
-    let y = event.offsetY || event.touches[0].clientY;
+    let { x, y } = getTouchOrMousePosition(event);
     const closestPoint = getClosestPointOnPath(x, y);
-    
+
     if (currentPath === "") {
         currentPath = `M${closestPoint.x} ${closestPoint.y}`;
     } else {
@@ -78,24 +77,14 @@ function startDrawing(event) {
 
 let lastX = null;
 let lastY = null;
-function isTracingComplete() {
-    let drawnLength = drawnPath.getTotalLength();
-    let actualLength = tracingPath.getTotalLength();
-    
-    let completionRatio = drawnLength / actualLength;
-    
-    console.log("Tracing Completion:", completionRatio * 100, "%"); // Debugging ke liye
-    
-    return completionRatio >= 0.99; // Ensure ke 99%+ traced ho
-}
 
 function trace(event) {
     if (!isDrawing) return;
-    
-    let x = event.offsetX || event.touches[0].clientX;
-    let y = event.offsetY || event.touches[0].clientY;
+    event.preventDefault(); // Prevent default touch behavior
+
+    let { x, y } = getTouchOrMousePosition(event);
     const closestPoint = getClosestPointOnPath(x, y);
-    
+
     const distance = Math.sqrt((x - closestPoint.x) ** 2 + (y - closestPoint.y) ** 2);
     if (distance > 20) return; 
 
@@ -112,9 +101,8 @@ function trace(event) {
 
     drawnPath.attr({ path: currentPath });
 
-    // **Fix: Only trigger animations when tracing is 100% done**
     if (!tracingCompleted && isTracingComplete()) {
-        tracingCompleted = true; // Prevent multiple triggers
+        tracingCompleted = true;
         setTimeout(() => {
             triggerFallingBalls();
             clapSound.play();
@@ -122,7 +110,6 @@ function trace(event) {
         }, 500);
     }
 }
-
 
 function stopDrawing() {
     isDrawing = false;
@@ -149,17 +136,7 @@ function getClosestPointOnPath(x, y) {
 function isTracingComplete() {
     return drawnPath.getTotalLength() >= tracingPath.getTotalLength();
 }
-function getTouchOrMousePosition(event) {
-    let x, y;
-    if (event.touches) {
-        x = event.touches[0].clientX - event.target.getBoundingClientRect().left;
-        y = event.touches[0].clientY - event.target.getBoundingClientRect().top;
-    } else {
-        x = event.offsetX;
-        y = event.offsetY;
-    }
-    return { x, y };
-}
+
 function triggerFallingBalls() {
     const container = document.getElementById("tracingContainer");
     const pastelColors = [
@@ -221,7 +198,6 @@ particleStyle.innerHTML = `
 `;
 document.head.appendChild(particleStyle);
 
-
 function moveToBubbleEffect() {
     drawnPath.animate(
         {
@@ -265,16 +241,27 @@ function resetTracing() {
 }
 
 
+// ✅ Mobile Friendly Function to Get Position
+function getTouchOrMousePosition(event) {
+    let x, y;
+    if (event.touches && event.touches.length > 0) {
+        let rect = tracingContainer.getBoundingClientRect();
+        x = event.touches[0].clientX - rect.left;
+        y = event.touches[0].clientY - rect.top;
+    } else {
+        x = event.offsetX;
+        y = event.offsetY;
+    }
+    return { x, y };
+}
 
 // Mouse Events
 document.getElementById("tracingContainer").addEventListener("mousedown", startDrawing);
 document.getElementById("tracingContainer").addEventListener("mousemove", trace);
 document.getElementById("tracingContainer").addEventListener("mouseup", stopDrawing);
-// Touch Events
 tracingContainer.addEventListener("touchstart", startDrawing, { passive: false });
 tracingContainer.addEventListener("touchmove", trace, { passive: false });
 tracingContainer.addEventListener("touchend", stopDrawing);
-
 
 // Initial drawing
 drawLetter();
